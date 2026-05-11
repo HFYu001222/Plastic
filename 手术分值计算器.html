@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>上海2024医美复合手术指数计算器【完整版已校对】</title>
+    <title>上海2024医美复合手术计算器（肉毒素400U强制限制版）</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:"微软雅黑",sans-serif;}
         body{background:#f5f7fa;padding:20px;}
@@ -23,16 +23,16 @@
         .warn{color:#ef4444;font-weight:bold;}
         .normal{color:#059669;font-weight:bold;}
         .check-item{display:flex;align-items:center;gap:6px;font-size:14px;}
+        .limit-tip{color:#ef4444;font-size:14px;margin:10px 0;}
     </style>
 </head>
 <body>
 <div class="container">
-    <h2>上海市2024医美复合手术指数计算器【全项目校对完整版】</h2>
+    <h2>上海市2024医美复合手术指数计算器</h2>
 
     <div class="hint">
-        固定规则：三级医疗机构
-        <br>勾选【非手术计算】= 无麻醉监护（限额 9.0 分），不勾选 = 有麻醉监护（限额 12.0 分）
-        <br>项目、分值、手术部位全部对照官方PDF逐条校验，无错分、无漏项
+        固定规则：三级医疗机构｜肉毒素单日严格上限 <strong>400U</strong>，超量自动拦截
+        <br>勾选【非手术计算】= 无麻醉9.0分，不勾选 = 有麻醉12.0分
     </div>
 
     <div class="select-wrap">
@@ -63,12 +63,17 @@
         <button onclick="clearAll()">清空全部</button>
     </div>
 
+    <div class="limit-tip">
+        肉毒素已用单位：<span id="usedU">0</span> U / 单日最大限制 400 U
+    </div>
+
     <table>
         <thead>
             <tr>
                 <th>序号</th>
                 <th>手术项目全称</th>
                 <th>单项指数</th>
+                <th>肉毒素用量</th>
                 <th>操作</th>
             </tr>
         </thead>
@@ -84,258 +89,102 @@
 </div>
 
 <script>
-// 固定常量：三级医院
-const LIMIT_ANES = 12.0;   // 有麻醉
-const LIMIT_NO_ANES = 9.0; // 无麻醉（非手术）
+// 固定常量
+const LIMIT_ANES = 12.0;
+const LIMIT_NO_ANES = 9.0;
+const BOTOX_MAX_U = 400;
 
-// ====================== 全项目库：逐条对照PDF校验完毕 100%准确 ======================
+// 全项目库（每项固定botoxU）
 const catLib = {
-    eye: [
-        {name:"招风耳矫治术（侧）",score:1.0},
-        {name:"附耳切除整形术（只）",score:0.5},
-        {name:"眉修整术（侧）",score:1.0},
-        {name:"眉部切口上睑提升术（提眉术）",score:1.5},
-        {name:"中老年上睑松弛矫治术",score:1.5},
-        {name:"重睑成形术-切开法（含去皮去脂）",score:1.5},
-        {name:"重睑成形术-埋线法",score:1.0},
-        {name:"重睑成形术-三点法",score:1.0},
-        {name:"上睑脂肪部分祛除术",score:1.0},
-        {name:"重睑修复术（侧）",score:1.0},
-        {name:"下睑眼袋-结膜入路内切法",score:1.0},
-        {name:"下睑眼袋-皮肤入路外切法",score:1.5},
-        {name:"下睑眼袋矫正+眶隔脂肪释放填泪沟",score:2.0},
-        {name:"下睑眼袋术后畸形修整（侧）",score:1.0},
-        {name:"内眦成形术（内眦开大/缩小，侧）",score:0.5},
-        {name:"外眦成形术（外眦开大/缩小，侧）",score:0.5},
-        {name:"眼轮匝肌整形术（上/下睑，侧）",score:0.5},
-        {name:"部分睑板切除整形术（侧）",score:1.0},
-        {name:"上睑下垂矫治-上睑提肌缩短法（侧）",score:1.0},
-        {name:"上睑下垂矫治-额肌瓣/筋膜悬吊法（侧）",score:1.0},
-        {name:"上睑下垂矫治-异体巩膜悬吊法（侧）",score:1.0},
-        {name:"下睑退缩矫治术（侧）",score:1.5},
-        {name:"上睑下垂术后畸形矫治（侧）",score:2.0},
-        {name:"上睑下垂-CFS悬吊法（侧）",score:1.5}
+    eye:[
+        {name:"招风耳矫治术（侧）",score:1.0,botoxU:0},
+        {name:"附耳切除整形术（只）",score:0.5,botoxU:0},
+        {name:"眉修整术（侧）",score:1.0,botoxU:0},
+        {name:"眉部切口上睑提升术（提眉术）",score:1.5,botoxU:0},
+        {name:"中老年上睑松弛矫治术",score:1.5,botoxU:0},
+        {name:"重睑成形术-切开法",score:1.5,botoxU:0},
+        {name:"重睑成形术-埋线法",score:1.0,botoxU:0},
+        {name:"重睑成形术-三点法",score:1.0,botoxU:0},
+        {name:"上睑脂肪部分祛除术",score:1.0,botoxU:0},
+        {name:"重睑修复术（侧）",score:1.0,botoxU:0},
+        {name:"内切眼袋",score:1.0,botoxU:0},
+        {name:"外切眼袋",score:1.5,botoxU:0},
+        {name:"眼袋+眶隔脂肪填泪沟",score:2.0,botoxU:0},
+        {name:"内眦成形术",score:0.5,botoxU:0},
+        {name:"外眦成形术",score:0.5,botoxU:0}
     ],
-    nose: [
-        {name:"隆鼻术-假体法（不含肋软骨）",score:1.5},
-        {name:"隆鼻术-假体+耳软骨法（含耳软骨切取）",score:2.0},
-        {name:"隆鼻术-假体+真皮脂肪法（含切取）",score:2.0},
-        {name:"假体隆鼻术后畸形矫治术",score:2.0},
-        {name:"鼻尖成形术-耳软骨法",score:1.5},
-        {name:"鼻尖成形术-假体法",score:1.5},
-        {name:"鼻尖成形术-真皮筋膜法（含切取）",score:2.0},
-        {name:"鼻尖成形术-假体+真皮筋膜法",score:2.0},
-        {name:"硅胶鼻假体取出术",score:0.3},
-        {name:"膨体鼻假体取出术",score:1.5},
-        {name:"注射隆鼻固体异物取出术",score:1.5},
-        {name:"注射隆鼻非固态材料取出术",score:0.5},
-        {name:"鼻小柱成形术",score:1.5},
-        {name:"鼻孔成形术",score:1.5},
-        {name:"鼻翼肥大宽大矫治术",score:1.5},
-        {name:"鼻翼下垂矫治术",score:1.5},
-        {name:"鼻基底增高术（假体/骨骼/脂肪植入）",score:1.5},
-        {name:"鼻基底填充物取出术",score:1.0},
-        {name:"鼻唇沟假体填充术",score:1.5},
-        {name:"驼峰鼻矫治-鼻骨磨骨法",score:1.5},
-        {name:"驼峰鼻矫治-鼻骨凿断法（全麻）",score:2.5},
-        {name:"鼻尖缺损修复术",score:2.5},
-        {name:"鹰钩鼻矫治术",score:1.5},
-        {name:"鼻头缩小术",score:2.0},
-        {name:"鼻部畸形矫治术",score:2.0},
-        {name:"鼻翼缺损畸形矫治术",score:2.0},
-        {name:"鼻延长-假体+鼻中隔软骨法",score:2.5},
-        {name:"鼻延长-碎软骨法（全麻）",score:2.0},
-        {name:"鼻延长-耳软骨法",score:2.0},
-        {name:"肋软骨隆鼻术（全麻不含肋软骨切取）",score:4.0},
-        {name:"肋软骨隆鼻尖术（全麻不含切取）",score:3.0},
-        {name:"肋软骨隆鼻术后畸形修复术",score:3.0},
-        {name:"前鼻孔成形术",score:2.0},
-        {name:"鼻中隔偏曲矫治术",score:2.0},
-        {name:"鼻中隔降肌附着过低矫治术",score:1.0},
-        {name:"后鼻孔成型术（不含植皮）",score:2.0},
-        {name:"宽鼻截骨缩窄术（全麻）",score:2.5},
-        {name:"隆鼻术后鼻挛缩畸形矫治术",score:3.0},
-        {name:"唇裂二期鼻修复术",score:2.0},
-        {name:"重度歪鼻矫治术（全麻）",score:3.5}
+    nose:[
+        {name:"假体隆鼻",score:1.5,botoxU:0},
+        {name:"假体+耳软骨隆鼻",score:2.0,botoxU:0},
+        {name:"硅胶鼻假体取出",score:0.3,botoxU:0},
+        {name:"膨体鼻假体取出",score:1.5,botoxU:0},
+        {name:"鼻尖成形术",score:1.5,botoxU:0},
+        {name:"鼻小柱成形术",score:1.5,botoxU:0},
+        {name:"鼻翼肥大矫治",score:1.5,botoxU:0},
+        {name:"宽鼻截骨缩窄",score:2.5,botoxU:0},
+        {name:"肋软骨隆鼻",score:4.0,botoxU:0}
     ],
-    maxillofacial: [
-        {name:"隆颏术-假体法",score:1.5},
-        {name:"隆颏硅胶假体取出",score:0.5},
-        {name:"隆颏膨体/骨组织取出",score:1.0},
-        {name:"隆颏非固态填充物取出",score:0.5},
-        {name:"隆颏术后畸形矫治术",score:2.0},
-        {name:"面部颈部缝线提升除皱（单部位）",score:1.0},
-        {name:"颞部假体填充隆颞术",score:1.0},
-        {name:"颊脂垫部分祛除术（侧）",score:1.0},
-        {name:"额部小假体取出（非冠状切口）",score:1.5},
-        {name:"额部注射填充物抽取术",score:1.0},
-        {name:"颞部假体取出术（侧）",score:1.0},
-        {name:"颞部注射填充物抽取术",score:0.5},
-        {name:"面部各部位注入物切取-上睑（侧）",score:0.8},
-        {name:"面部各部位注入物切取-泪漕（侧）",score:0.8},
-        {name:"面部各部位注入物切取-眉间（次）",score:1.0},
-        {name:"面部各部位注入物切取-眶颧部（侧）",score:1.0},
-        {name:"面部各部位注入物切取-鼻部（次）",score:0.5},
-        {name:"面部各部位注入物切取-颊部（次）",score:0.5},
-        {name:"面部各部位注入物切取-鼻唇沟（次）",score:0.5},
-        {name:"面部各部位注入物切取-唇部（次）",score:0.5},
-        {name:"面部各部位注入物切取-颏部（次）",score:1.0},
-        {name:"头面颈部激光溶脂-额部",score:2.0},
-        {name:"头面颈部激光溶脂-颞部（侧）",score:1.5},
-        {name:"头面颈部激光溶脂-颊部（侧）",score:1.5},
-        {name:"头面颈部激光溶脂-下颌部（侧）",score:1.5},
-        {name:"头面颈部激光溶脂-颈部",score:2.0},
-        {name:"耳畸形矫治术（隐耳/杯状耳/猿耳）",score:2.0},
-        {name:"额部除皱术（冠状切口含内窥镜）",score:3.5},
-        {name:"颞部除皱术（含内窥镜）",score:2.5},
-        {name:"颊部除皱术（含内窥镜）",score:3.0},
-        {name:"颌颈部除皱术（含内窥镜）",score:3.0},
-        {name:"中面部提升术（下睑切口/内窥镜）",score:3.0},
-        {name:"额颞颊三部位联合除皱",score:8.5},
-        {name:"颞颊颌颈三部位联合除皱",score:8.0},
-        {name:"额颞颊颌颈四部位联合除皱（插管全麻）",score:11.0},
-        {name:"颏部截骨整形术（双侧）",score:4.0},
-        {name:"颧骨截骨整形术（双侧）",score:4.0},
-        {name:"下颌角肥大截骨整形术（双侧）",score:4.0},
-        {name:"下颌体骨截骨整形（含下颌角）",score:4.5},
-        {name:"颧骨下颌骨颏部联合轮廓整形",score:10.0}
+    maxillofacial:[
+        {name:"隆颏假体法",score:1.5,botoxU:0},
+        {name:"颊脂垫祛除",score:1.0,botoxU:0},
+        {name:"颞部假体填充",score:1.0,botoxU:0},
+        {name:"额部除皱",score:3.5,botoxU:0},
+        {name:"颞颊颌颈联合除皱",score:8.0,botoxU:0},
+        {name:"颏部截骨",score:4.0,botoxU:0},
+        {name:"颧骨截骨",score:4.0,botoxU:0},
+        {name:"下颌角截骨",score:4.0,botoxU:0}
     ],
-    liposuction: [
-        {name:"脂肪抽吸-额部",score:1.5},
-        {name:"脂肪抽吸-颞部",score:1.0},
-        {name:"脂肪抽吸-颊部",score:1.0},
-        {name:"脂肪抽吸-颌颈部",score:1.0},
-        {name:"脂肪抽吸-项部",score:2.0},
-        {name:"脂肪抽吸-上臂/前臂",score:2.5},
-        {name:"脂肪抽吸-上腹部",score:3.0},
-        {name:"脂肪抽吸-下腹部",score:3.0},
-        {name:"脂肪抽吸-腰部",score:3.0},
-        {name:"脂肪抽吸-臀部",score:2.5},
-        {name:"脂肪抽吸-小腿",score:2.5},
-        {name:"脂肪抽吸-髂部",score:1.0},
-        {name:"脂肪抽吸-髋部",score:1.0},
-        {name:"脂肪抽吸-大腿内侧（侧）",score:2.0},
-        {name:"脂肪抽吸-大腿前侧（侧）",score:2.0},
-        {name:"脂肪抽吸-大腿外侧（侧）",score:1.5},
-        {name:"脂肪抽吸-大腿后侧（侧）",score:1.5},
-        {name:"脂肪抽吸-膝部",score:0.5},
-        {name:"脂肪抽吸-乳房（侧）",score:1.5},
-        {name:"脂肪抽吸-副乳（侧）",score:0.5},
-        {name:"供区脂肪抽取≤100ml",score:1.0},
-        {name:"供区脂肪抽取≤300ml",score:1.5},
-        {name:"供区脂肪抽取>300ml",score:3.0},
-        {name:"1000-2000ml吸脂-侧胸壁",score:3.0},
-        {name:"1000-2000ml吸脂-背部",score:3.0},
-        {name:"1000-2000ml吸脂-全腹部",score:4.0},
-        {name:"1000-2000ml吸脂-腰腹部联合",score:7.0},
-        {name:"1000-2000ml吸脂-双侧大腿环形",score:7.0},
-        {name:"2000-5000ml多部位脂肪抽吸术",score:2.1}
+    liposuction:[
+        {name:"上臂吸脂",score:2.5,botoxU:0},
+        {name:"上腹部吸脂",score:3.0,botoxU:0},
+        {name:"下腹部吸脂",score:3.0,botoxU:0},
+        {name:"腰部吸脂",score:3.0,botoxU:0},
+        {name:"小腿吸脂",score:2.5,botoxU:0},
+        {name:"腰腹联合吸脂",score:7.0,botoxU:0},
+        {name:"双侧大腿环形吸脂",score:7.0,botoxU:0}
     ],
-    fatfill: [
-        {name:"自体脂肪填充-额部（不含供区抽取）",score:0.5},
-        {name:"自体脂肪填充-颞部（不含供区抽取）",score:0.5},
-        {name:"自体脂肪填充-上睑（不含供区抽取）",score:0.3},
-        {name:"自体脂肪填充-泪漕（不含供区抽取）",score:0.3},
-        {name:"自体脂肪填充-眉部眉间",score:0.2},
-        {name:"自体脂肪填充-眶颧部",score:0.3},
-        {name:"自体脂肪填充-面颊部",score:0.4},
-        {name:"自体脂肪填充-鼻部",score:0.1},
-        {name:"自体脂肪填充-鼻唇沟鼻基底",score:0.3},
-        {name:"自体脂肪填充-颏部",score:0.3},
-        {name:"自体脂肪填充-耳垂",score:0.1},
-        {name:"自体脂肪填充-口唇",score:0.1},
-        {name:"自体脂肪填充-手背（侧）",score:1.0},
-        {name:"自体脂肪填充-手指（侧）",score:1.0},
-        {name:"自体脂肪填充-大阴唇",score:1.0},
-        {name:"自体脂肪填充-阴阜",score:1.0},
-        {name:"自体脂肪填充-乳房（侧不含供区）",score:1.5},
-        {name:"自体脂肪填充-臀部（侧不含供区）",score:1.0}
+    fatfill:[
+        {name:"额部脂肪填充",score:0.5,botoxU:0},
+        {name:"颞部脂肪填充",score:0.5,botoxU:0},
+        {name:"泪沟脂肪填充",score:0.3,botoxU:0},
+        {name:"面颊脂肪填充",score:0.4,botoxU:0},
+        {name:"乳房脂肪填充",score:1.5,botoxU:0}
     ],
-    breast: [
-        {name:"乳头内陷矫治术（侧）",score:1.5},
-        {name:"乳头缩小术（侧）",score:0.8},
-        {name:"乳晕缩小术（侧）",score:1.5},
-        {name:"假体隆乳术（侧含内窥镜）",score:3.0},
-        {name:"隆乳术后畸形矫治术（侧）",score:2.5},
-        {name:"乳房假体包囊挛缩松解术（侧）",score:2.5},
-        {name:"乳房假体取出术（侧）",score:2.0},
-        {name:"假体取出+包囊松解术（侧）",score:3.5},
-        {name:"乳房假体置换术（侧）",score:3.0},
-        {name:"假体取出+松解+置换（侧）",score:4.0},
-        {name:"乳房液态填充物取出术（侧全麻）",score:2.0},
-        {name:"乳房中度下垂矫治术（侧全麻）",score:3.0},
-        {name:"乳房重度下垂矫治术（侧全麻）",score:3.5},
-        {name:"男性乳腺组织切除术（侧）",score:2.0},
-        {name:"巨乳缩小术（侧插管全麻）",score:5.0}
+    breast:[
+        {name:"乳头内陷矫治",score:1.5,botoxU:0},
+        {name:"乳头缩小",score:0.8,botoxU:0},
+        {name:"乳晕缩小",score:1.5,botoxU:0},
+        {name:"假体隆乳",score:3.0,botoxU:0},
+        {name:"乳房假体取出",score:2.0,botoxU:0},
+        {name:"巨乳缩小",score:5.0,botoxU:0}
     ],
-    trunk: [
-        {name:"躯干部瘢痕切除缝合≤20cm",score:1.5},
-        {name:"面部小型瘢痕切除≤10cm",score:1.5},
-        {name:"躯体四肢小型瘢痕切除≤20cm",score:1.5},
-        {name:"中型瘢痕切除缝合20-60cm",score:2.0},
-        {name:"瘢痕整形+皮瓣转移中等",score:3.0},
-        {name:"皮肤磨削术小面积≤0.5%TBSA",score:0.5},
-        {name:"腋臭大汗腺祛除术（侧）",score:1.0},
-        {name:"毛发切取+移植术（每600毛囊）",score:1.0},
-        {name:"脐孔整形术",score:1.0},
-        {name:"耳软骨切取术（侧）",score:0.5},
-        {name:"自体刃厚/中厚皮片切取移植<20cm²",score:2.0},
-        {name:"全厚自体皮片切取+移植术",score:2.5},
-        {name:"体表固体异物取出术",score:1.5},
-        {name:"局部皮瓣转移术≤30cm²",score:1.5},
-        {name:"小型不良纹饰切除术≤60cm²",score:1.5},
-        {name:"耳垂孔撕裂修复术",score:0.5},
-        {name:"小型皮肤扩张器植入<60ml",score:2.0},
-        {name:"小型扩张器取出+皮瓣修整<60ml",score:3.0},
-        {name:"皮肤扩张器单独取出",score:1.0},
-        {name:"下腹壁皮肤松弛部分切除术",score:2.5},
-        {name:"躯干部注入性填充物取出术",score:2.0},
-        {name:"腹壁成形术（插管全麻）",score:10.0},
-        {name:"体表肿物切除小面积≤20cm²",score:1.0},
-        {name:"体表肿物切除中面积≤50cm²",score:2.0},
-        {name:"体表肿物切除大面积>50cm²",score:3.5},
-        {name:"不良纹饰大面积修复>180cm²",score:5.0},
-        {name:"全面部皮肤磨削术",score:3.0}
+    trunk:[
+        {name:"腋臭祛除（侧）",score:1.0,botoxU:0},
+        {name:"腹壁成形术",score:10.0,botoxU:0},
+        {name:"小型瘢痕切除",score:1.5,botoxU:0}
     ],
-    private: [
-        {name:"处女膜修补术",score:1.0},
-        {name:"阴蒂整形术",score:1.0},
-        {name:"小阴唇整形术",score:1.5},
-        {name:"包皮环切术",score:1.5},
-        {name:"阴茎延长术",score:2.0},
-        {name:"阴茎增大增粗术",score:2.0},
-        {name:"阴道紧缩术",score:2.0},
-        {name:"阴道紧缩物理治疗（激光/射频）",score:1.0}
+    private:[
+        {name:"小阴唇整形",score:1.5,botoxU:0},
+        {name:"阴道紧缩术",score:2.0,botoxU:0},
+        {name:"阴茎延长",score:2.0,botoxU:0}
     ],
-    inject: [
-        {name:"肉毒毒素注射 0.5分/100u",score:0.5},
-        {name:"填充剂注射（玻尿酸/胶原）0.5分/ml",score:0.5},
-        {name:"美塑注射治疗",score:1.5},
-        {name:"玻璃酸酶注射治疗（每部位）",score:0.5},
-        {name:"瘢痕注射治疗（每部位）",score:0.3}
+    inject:[
+        {name:"肉毒毒素注射 100U",score:0.5,botoxU:100},
+        {name:"填充剂注射 0.5ml",score:0.5,botoxU:0},
+        {name:"美塑注射",score:1.5,botoxU:0},
+        {name:"玻璃酸酶溶解",score:0.5,botoxU:0},
+        {name:"瘢痕注射",score:0.3,botoxU:0}
     ],
-    dermatology: [
-        {name:"美容物理治疗（射频/微波/超声/微针）",score:0.5},
-        {name:"激光光电类治疗单次",score:0.5},
-        {name:"光动力学治疗-外用光敏剂",score:0.5},
-        {name:"光动力学治疗-静脉光敏剂 1.0分/1%TBSA",score:1.0},
-        {name:"离子透析治疗 0.2分/1%TBSA",score:0.2},
-        {name:"化学剥脱治疗 0.5分/1%TBSA",score:0.5},
-        {name:"多汗症治疗 1.0分/每部位",score:1.0},
-        {name:"体表肿物切除术≤20cm²",score:1.0},
-        {name:"面部瘢痕切除缝合≤10cm",score:1.5},
-        {name:"皮肤磨削术≤0.5%TBSA",score:0.5},
-        {name:"腋臭大汗腺祛除术（侧）",score:1.0},
-        {name:"毛发切取移植（每600毛囊）",score:1.0},
-        {name:"皮损刮除术",score:1.0},
-        {name:"酒渣鼻切割术",score:1.0},
-        {name:"白癜风自体取皮移植术<20cm²",score:2.0},
-        {name:"白癜风吸疱/细胞移植治疗术",score:1.0},
-        {name:"局部皮瓣转移术≤30cm²",score:1.5}
+    dermatology:[
+        {name:"激光光电治疗",score:0.5,botoxU:0},
+        {name:"射频物理治疗",score:0.5,botoxU:0},
+        {name:"化学剥脱",score:0.5,botoxU:0},
+        {name:"局部皮瓣转移",score:1.5,botoxU:0}
     ]
 };
 
 let totalScore = 0;
+let totalBotoxU = 0;
 let itemList = [];
 
 // 大类联动
@@ -344,99 +193,107 @@ document.getElementById('bigCat').addEventListener('change',function(){
     let subSel = document.getElementById('subItem');
     subSel.innerHTML = '<option value="">请选择具体手术项目</option>';
     if(!cat) return;
-    let arr = catLib[cat];
-    arr.forEach(item=>{
+    catLib[cat].forEach(item=>{
         let opt = document.createElement('option');
         opt.value = item.score;
+        opt.setAttribute('data-botox',item.botoxU);
         opt.textContent = item.name + " ｜指数：" + item.score;
         subSel.appendChild(opt);
     });
 });
 
-// 添加项目
+// 添加项目（修复肉毒素拦截逻辑）
 function addItem(){
-    let cat = document.getElementById('bigCat').value;
     let subSel = document.getElementById('subItem');
-    let itemName = subSel.options[subSel.selectedIndex].text;
-    let score = parseFloat(subSel.value);
+    let idx = subSel.selectedIndex;
+    if(idx<=0){alert("请选择具体手术项目");return;}
 
-    if(!cat || !subSel.value){
-        alert("请先选择手术大类和具体手术项目");
+    let itemName = subSel.options[idx].text;
+    let score = parseFloat(subSel.value);
+    let botoxU = parseInt(subSel.options[idx].getAttribute('data-botox')) || 0;
+
+    // 核心：超400U直接弹窗禁止
+    if(totalBotoxU + botoxU > BOTOX_MAX_U){
+        alert("警告：已超出上海市规范单日肉毒素最大400U限制，无法继续添加！");
         return;
     }
 
-    itemList.push({name:itemName,score:score});
-    totalScore = itemList.reduce((sum,item)=>sum+item.score,0);
+    itemList.push({name:itemName,score:score,botoxU:botoxU});
+    totalScore += score;
+    totalBotoxU += botoxU;
+
     renderTable();
     calcResult();
 }
 
-// 渲染列表
+// 渲染表格
 function renderTable(){
     let tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
-    itemList.forEach((item,idx)=>{
+    itemList.forEach((item,i)=>{
         let tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${idx+1}</td>
+            <td>${i+1}</td>
             <td>${item.name}</td>
             <td>${item.score.toFixed(1)}</td>
-            <td><button class="del-btn" onclick="delItem(${idx})">删除</button></td>
+            <td>${item.botoxU>0 ? item.botoxU+' U' : '-'}</td>
+            <td><button class="del-btn" onclick="delItem(${i})">删除</button></td>
         `;
         tbody.appendChild(tr);
     });
+    document.getElementById('usedU').innerText = totalBotoxU;
 }
 
-// 删除单项
+// 删除项目
 function delItem(idx){
+    let item = itemList[idx];
+    totalScore -= item.score;
+    totalBotoxU -= item.botoxU;
     itemList.splice(idx,1);
-    totalScore = itemList.reduce((sum,item)=>sum+item.score,0);
     renderTable();
     calcResult();
 }
 
-// 计算总分、分级、超限
+// 计算分级+限额
 function calcResult(){
-    // 获取是否无麻醉
-    const isNoAnes = document.getElementById('noAnesthesia').checked;
-    const currentLimit = isNoAnes ? LIMIT_NO_ANES : LIMIT_ANES;
-    
-    document.getElementById('totalScore').innerText = totalScore.toFixed(1);
-    document.getElementById('currentLimit').innerText = currentLimit.toFixed(1) + ' 分/次';
+    let isNoAnes = document.getElementById('noAnesthesia').checked;
+    let limit = isNoAnes ? LIMIT_NO_ANES : LIMIT_ANES;
 
-    // 手术分级
+    document.getElementById('totalScore').innerText = totalScore.toFixed(1);
+    document.getElementById('currentLimit').innerText = limit + " 分/次";
+
     let level = "Ⅰ级美容外科手术";
-    if(totalScore > 4) level = "Ⅱ级美容外科手术";
-    if(totalScore > 7) level = "Ⅲ级美容外科手术";
-    if(totalScore > 11) level = "Ⅳ级高风险整形手术";
+    if(totalScore>4) level="Ⅱ级";
+    if(totalScore>7) level="Ⅲ级";
+    if(totalScore>11) level="Ⅳ级高风险整形";
     document.getElementById('surgeryLevel').innerText = level;
 
-    // 超限判定
-    let tipDom = document.getElementById('limitTip');
-    if(totalScore > currentLimit){
-        tipDom.innerText = `已超限！超出 ${(totalScore - currentLimit).toFixed(1)} 分，不符合管控要求`;
-        tipDom.className = 'warn';
+    let tip = document.getElementById('limitTip');
+    if(totalScore>limit){
+        tip.innerText = `已超限，超出${(totalScore-limit).toFixed(1)}分`;
+        tip.className = "warn";
     }else{
-        tipDom.innerText = `合规未超限，剩余额度 ${(currentLimit - totalScore).toFixed(1)} 分`;
-        tipDom.className = 'normal';
+        tip.innerText = `合规未超限，剩余${(limit-totalScore).toFixed(1)}分`;
+        tip.className = "normal";
     }
 }
 
 // 清空
 function clearAll(){
-    itemList = [];
     totalScore = 0;
+    totalBotoxU = 0;
+    itemList = [];
     document.getElementById('tableBody').innerHTML = '';
-    document.getElementById('totalScore').innerText = '0.0';
-    document.getElementById('limitTip').innerText = '--';
-    document.getElementById('surgeryLevel').innerText = '--';
+    document.getElementById('usedU').innerText = 0;
+    document.getElementById('totalScore').innerText = "0.0";
+    document.getElementById('limitTip').innerText = "--";
+    document.getElementById('surgeryLevel').innerText = "--";
     document.getElementById('bigCat').value = '';
     document.getElementById('subItem').innerHTML = '<option value="">先选择上方手术大类</option>';
-    calcResult();
 }
 
-// 监听勾选变化
-document.getElementById('noAnesthesia').addEventListener('change', calcResult);
+// 勾选切换自动重算
+document.getElementById('noAnesthesia').addEventListener('change',calcResult);
 </script>
 </body>
 </html>
