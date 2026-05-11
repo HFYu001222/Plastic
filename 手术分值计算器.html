@@ -22,6 +22,7 @@
         .result-item{font-size:16px;margin:8px 0;}
         .warn{color:#ef4444;font-weight:bold;}
         .normal{color:#059669;font-weight:bold;}
+        .check-item{display:flex;align-items:center;gap:6px;font-size:14px;}
     </style>
 </head>
 <body>
@@ -29,7 +30,8 @@
     <h2>上海市2024医美复合手术指数计算器【全项目校对完整版】</h2>
 
     <div class="hint">
-        固定规则：三级医疗机构｜有麻醉监护｜单次治疗指数限额 <strong>12.0分</strong>
+        固定规则：三级医疗机构
+        <br>勾选【非手术计算】= 无麻醉监护（限额 9.0 分），不勾选 = 有麻醉监护（限额 12.0 分）
         <br>项目、分值、手术部位全部对照官方PDF逐条校验，无错分、无漏项
     </div>
 
@@ -52,6 +54,11 @@
             <option value="">先选择上方手术大类</option>
         </select>
 
+        <div class="check-item">
+            <input type="checkbox" id="noAnesthesia">
+            <label for="noAnesthesia">非手术计算（无麻醉监护）</label>
+        </div>
+
         <button onclick="addItem()">添加本次手术项目</button>
         <button onclick="clearAll()">清空全部</button>
     </div>
@@ -70,15 +77,16 @@
 
     <div class="result-box">
         <div class="result-item">累计治疗指数总分：<span id="totalScore" class="normal">0.0</span></div>
-        <div class="result-item">机构固定限额：12.0 分/次</div>
+        <div class="result-item">当前限额标准：<span id="currentLimit">12.0 分/次</span></div>
         <div class="result-item">超限合规判定：<span id="limitTip">--</span></div>
         <div class="result-item">复合手术等级判定：<span id="surgeryLevel">--</span></div>
     </div>
 </div>
 
 <script>
-// 固定常量：三级医院+有麻醉 限额12分
-const FIX_LIMIT = 12.0;
+// 固定常量：三级医院
+const LIMIT_ANES = 12.0;   // 有麻醉
+const LIMIT_NO_ANES = 9.0; // 无麻醉（非手术）
 
 // ====================== 全项目库：逐条对照PDF校验完毕 100%准确 ======================
 const catLib = {
@@ -389,20 +397,27 @@ function delItem(idx){
 
 // 计算总分、分级、超限
 function calcResult(){
+    // 获取是否无麻醉
+    const isNoAnes = document.getElementById('noAnesthesia').checked;
+    const currentLimit = isNoAnes ? LIMIT_NO_ANES : LIMIT_ANES;
+    
     document.getElementById('totalScore').innerText = totalScore.toFixed(1);
+    document.getElementById('currentLimit').innerText = currentLimit.toFixed(1) + ' 分/次';
 
+    // 手术分级
     let level = "Ⅰ级美容外科手术";
     if(totalScore > 4) level = "Ⅱ级美容外科手术";
     if(totalScore > 7) level = "Ⅲ级美容外科手术";
     if(totalScore > 11) level = "Ⅳ级高风险整形手术";
     document.getElementById('surgeryLevel').innerText = level;
 
+    // 超限判定
     let tipDom = document.getElementById('limitTip');
-    if(totalScore > FIX_LIMIT){
-        tipDom.innerText = `已超限！超出 ${(totalScore - FIX_LIMIT).toFixed(1)} 分，不符合管控要求`;
+    if(totalScore > currentLimit){
+        tipDom.innerText = `已超限！超出 ${(totalScore - currentLimit).toFixed(1)} 分，不符合管控要求`;
         tipDom.className = 'warn';
     }else{
-        tipDom.innerText = `合规未超限，剩余额度 ${(FIX_LIMIT - totalScore).toFixed(1)} 分`;
+        tipDom.innerText = `合规未超限，剩余额度 ${(currentLimit - totalScore).toFixed(1)} 分`;
         tipDom.className = 'normal';
     }
 }
@@ -417,7 +432,11 @@ function clearAll(){
     document.getElementById('surgeryLevel').innerText = '--';
     document.getElementById('bigCat').value = '';
     document.getElementById('subItem').innerHTML = '<option value="">先选择上方手术大类</option>';
+    calcResult();
 }
+
+// 监听勾选变化
+document.getElementById('noAnesthesia').addEventListener('change', calcResult);
 </script>
 </body>
 </html>
