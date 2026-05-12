@@ -300,9 +300,57 @@ function clearAll(){
 document.getElementById('noAnesthesia').addEventListener('change',calcResult);
 </script>
 
-<div style="text-align:center; margin:20px 0;">
-  <img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https://HFYu001222.github.io/Plastic/fenzhi/&count_bg=%2379C83D&title_bg=%23555555&icon=github.svg&icon_color=%23E7E7E7&title=访问量&edge_flat=false" alt="访问量">
+<div style="text-align: center; margin: 20px 0; font-family: Arial, sans-serif;">
+  <!-- 总计访问量 -->
+  <div style="display: inline-block; margin-right: 10px;">
+    <span style="display: inline-block; background: #555; color: white; padding: 5px 12px; border-radius: 4px 0 0 4px; font-size: 14px;">
+      总计访问量
+    </span>
+    <span id="total-count" style="display: inline-block; background: #72C354; color: white; padding: 5px 12px; border-radius: 0 4px 4px 0; font-size: 14px; margin-left: -1px;">
+      0
+    </span>
+  </div>
+
+  <!-- 今日访问量 -->
+  <div style="display: inline-block;">
+    <span style="display: inline-block; background: #555; color: white; padding: 5px 12px; border-radius: 4px 0 0 4px; font-size: 14px;">
+      今日访问量
+    </span>
+    <span id="today-count" style="display: inline-block; background: #4285F4; color: white; padding: 5px 12px; border-radius: 0 4px 4px 0; font-size: 14px; margin-left: -1px;">
+      0
+    </span>
+  </div>
 </div>
+
+<script>
+(function() {
+  // 1. 处理总计访问量
+  let total = localStorage.getItem('visitTotal') || 0;
+  total = parseInt(total) + 1;
+  localStorage.setItem('visitTotal', total);
+  document.getElementById('total-count').textContent = total;
+
+  // 2. 处理今日访问量
+  const todayKey = 'visitDate';
+  const countKey = 'visitToday';
+  const todayStr = new Date().toISOString().split('T')[0]; // 获取当前日期 YYYY-MM-DD
+
+  let storedDate = localStorage.getItem(todayKey);
+  let todayCount = 0;
+
+  if (storedDate === todayStr) {
+    // 还是同一天，计数+1
+    todayCount = parseInt(localStorage.getItem(countKey) || 0) + 1;
+  } else {
+    // 日期变了，重置为1
+    todayCount = 1;
+    localStorage.setItem(todayKey, todayStr);
+  }
+
+  localStorage.setItem(countKey, todayCount);
+  document.getElementById('today-count').textContent = todayCount;
+})();
+</script>
 
 </body>
 </html>
